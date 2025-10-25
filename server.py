@@ -18,7 +18,7 @@ app.add_middleware(
 
 class QueryRequest(BaseModel):
     question: str
-    n_results: Optional[int] = 3
+    n_results: Optional[int] = 20
 
 @app.post("/query")
 def query_docs(req: QueryRequest):

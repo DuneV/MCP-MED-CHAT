@@ -3,6 +3,7 @@ import { SourceCard } from "./source-card"
 import { ChartDisplay } from "./chart-display"
 import { DecisionTree } from "./decision-tree"
 import { User, FileText } from "lucide-react"
+import Image from "next/image"
 
 interface ChatMessageProps {
   message: Message
@@ -15,14 +16,24 @@ export function ChatMessage({ message }: ChatMessageProps) {
     <div className="flex items-start gap-3">
       {/* Avatar */}
       <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full overflow-hidden ${
           isUser ? "bg-secondary" : "bg-primary"
         }`}
       >
         {isUser ? (
           <User className="h-4 w-4 text-secondary-foreground" />
         ) : (
-          <FileText className="h-4 w-4 text-primary-foreground" />
+          // OPCIÓN 1: Usar imagen personalizada (descomenta esto)
+          <Image 
+            src="/doctor.png"
+            alt="Observatorio José Félix Patiño"
+            width={32}
+            height={32}
+            className="object-cover"
+          />
+          
+          // OPCIÓN 2: Usar ícono (comenta la imagen de arriba y descomenta esto)
+          // <FileText className="h-4 w-4 text-primary-foreground" />
         )}
       </div>
 

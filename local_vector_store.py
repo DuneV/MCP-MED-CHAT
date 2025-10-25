@@ -176,8 +176,8 @@ class LocalVectorStore:
         except Exception as e:
             logger.error(f"Error en búsqueda: {e}")
             return []
-
-    def query_with_ollama(self, question: str, n_results: int = 3) -> str:
+    
+    def query_with_ollama(self, question: str, n_results: int = 20, history: List[Dict[str, str]] = None) -> str:
         """
         Realiza una consulta usando RAG (Retrieval-Augmented Generation)
         """
@@ -194,34 +194,46 @@ class LocalVectorStore:
                 for i, result in enumerate(search_results)
             ])
             
-            # Crear prompt
-            prompt = f"""Basándote únicamente en la siguiente información de documentos, responde la pregunta de manera precisa y detallada:
+            # System prompt
+            system_prompt = """Eres un asistente experto especializado en análisis de documentos. 
+    Tu tarea es responder preguntas basándote ÚNICAMENTE en el contexto proporcionado.
 
-CONTEXTO:
-{context}
+    REGLAS:
+    - Responde solo con información del contexto
+    - Si la información no está disponible, dilo claramente
+    - Cita las fuentes cuando sea relevante (Documento 1, Documento 2, etc.)
+    - Proporciona respuestas detalladas y bien estructuradas
+    - Sugiere estrategias y perspectivas adicionales cuando sea apropiado
+    - Responde en español"""
 
-PREGUNTA: {question}
+            # User prompt con contexto
+            user_prompt = f"""CONTEXTO DE LOS DOCUMENTOS:
+    {context}
 
-INSTRUCCIONES:
-- Responde solo con información del contexto proporcionado
-- Si la información no está disponible, indícalo claramente
-- Cita las fuentes cuando sea relevante
-- Sé preciso y conciso
+    PREGUNTA DEL USUARIO:
+    {question}"""
 
-RESPUESTA:"""
-
-            # Generar respuesta con Ollama
-            response = ollama.generate(
-                model='llama3.1:8b',  # o el modelo que tengas instalado
-                prompt=prompt,
+            messages = [
+                {"role": "system", "content": system_prompt}
+            ]
+            
+            if history:
+                messages.extend(history)
+            
+            messages.append({"role": "user", "content": user_prompt})
+            
+            # Generar respuesta con ollama.chat
+            response = ollama.chat(
+                model='llama3.1:8b',
+                messages=messages,
                 options={
-                    'temperature': 0.1,
+                    'temperature': 0.7,  # Un poco más alto para respuestas más creativas
                     'top_p': 0.9,
-                    'max_tokens': 1000
+                    'num_predict': 4096  # Usar num_predict en lugar de max_tokens
                 }
             )
             
-            return response['response']
+            return response['message']['content']
             
         except Exception as e:
             logger.error(f"Error en consulta con Ollama: {e}")
@@ -274,10 +286,12 @@ if __name__ == "__main__":
     vector_store = LocalVectorStore()
 
     print("=== Añadiendo documentos ===")
-    documents = [
-        "./DOC_VSR.docx"
-    ]
+    docs_dir = Path("documents")
+
+    valid_extensions = [".pdf", ".docx", ".doc", ".txt"]
     
+    documents = [str(f) for f in docs_dir.glob("*") if f.suffix.lower() in valid_extensions]
+
     for doc_path in documents:
         if os.path.exists(doc_path):
             success = vector_store.add_document(doc_path)
