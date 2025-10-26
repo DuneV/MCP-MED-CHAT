@@ -9,7 +9,6 @@ chromadb
 ollama
 
 # LangChain para split de texto y loaders
-langchain
 langchain-community
 
 # Procesadores de documentos

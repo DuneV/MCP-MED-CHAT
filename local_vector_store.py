@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 import chromadb
 from chromadb.config import Settings
 import ollama
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import (
     PyPDFLoader, 
     TextLoader, 
