@@ -5,12 +5,12 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChatMessage } from "@/components/chat-message"
 import { ChatInput } from "@/components/chat-input"
 import { FileText, Download, FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,7 +73,9 @@ export default function EpidemiologyChat() {
   const [isLoading, setIsLoading] = useState(false)
   const [mode, setMode] = useState<"chat" | "Calculadora" | "Estrategia">("chat")
 
-  // ⬇️ control de finalización de la calculadora
+  const [showOnboarding, setShowOnboarding] = useState(true)
+  const [dontShowAgain, setDontShowAgain] = useState(false)
+
   const [calcFinished, setCalcFinished] = useState(false)
   const [finalPayload, setFinalPayload] = useState<{ resultado: string; detalle: string } | null>(null)
 
@@ -81,6 +83,36 @@ export default function EpidemiologyChat() {
   const [currentQuestion, setCurrentQuestion] = useState<string>("¿Es temporada VSR?")
   const [currentOptions, setCurrentOptions] = useState<string[]>([])
   const [awaitingInputType, setAwaitingInputType] = useState<"text" | "number" | null>(null)
+  
+  const bubbleVariants = {
+    initial: { opacity: 0, y: 16, scale: 0.98 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -12, scale: 0.98 },
+  }
+  
+  const listVariants = {
+    initial: { opacity: 0, y: 24 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -24 },
+  }
+
+  useEffect(() => {
+    const seen = typeof window !== "undefined" && localStorage.getItem("ojfp_onboarding_seen")
+    if (seen === "1") setShowOnboarding(false)
+  }, [])
+
+  const closeOnboarding = () => {
+    setShowOnboarding(false)
+    if (dontShowAgain) localStorage.setItem("ojfp_onboarding_seen", "1")
+  }
+
+  useEffect(() => {
+    if (showOnboarding) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+  }, [showOnboarding])
 
   const handleModeChange = async (newMode: "chat" | "Calculadora" | "Estrategia") => {
     setMode(newMode)
@@ -524,27 +556,61 @@ export default function EpidemiologyChat() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-screen-md lg:max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="space-y-6 overflow-x-auto">
-            {messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))}
-            {isLoading && (
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
-                  <FileText className="h-4 w-4 text-primary-foreground" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <div className="rounded-lg bg-card p-4 shadow-sm border border-border">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]"></div>
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]"></div>
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-primary"></div>
+          <LayoutGroup>
+            <AnimatePresence mode="wait">
+              {/* 👇 al cambiar `mode`, este contenedor se desmonta/monta con transición */}
+              <motion.div
+                key={mode}
+                variants={listVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="space-y-6 overflow-x-auto"
+              >
+                <AnimatePresence>
+                  {messages.map((message) => (
+                    <motion.div
+                      key={message.id}
+                      layout
+                      variants={bubbleVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <ChatMessage message={message} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+
+                {isLoading && (
+                  <motion.div
+                    layout
+                    variants={bubbleVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    className="flex items-start gap-3"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
+                      <FileText className="h-4 w-4 text-primary-foreground" />
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+                    <div className="flex-1 space-y-2">
+                      <div className="rounded-lg bg-card p-4 shadow-sm border border-border">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]"></div>
+                          <div className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]"></div>
+                          <div className="h-2 w-2 animate-bounce rounded-full bg-primary"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </LayoutGroup>
         </div>
       </div>
 
@@ -595,6 +661,73 @@ export default function EpidemiologyChat() {
           </p>
         </div>
       </footer>
+         {/* === OVERLAY ONBOARDING === */}
+        <AnimatePresence>
+          {showOnboarding && (
+            <motion.div
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="w-full max-w-lg rounded-xl border border-border bg-card shadow-xl"
+                initial={{ y: 24, opacity: 0, scale: 0.98 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: -16, opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="p-6">
+                  <h2 className="text-xl font-semibold text-foreground">
+                    Aviso &amp; Guía rápida
+                  </h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Este asistente no reemplaza el juicio clínico ni las guías oficiales.
+                    Úsalo como apoyo con fuentes verificadas por el Observatorio.
+                  </p>
+
+                  <ol className="mt-4 space-y-2 text-sm text-foreground">
+                    <li className="flex gap-2">
+                      <span className="font-medium">1.</span>
+                      Formula una pregunta en <span className="font-medium">Modo Chat</span> y revisa las fuentes.
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium">2.</span>
+                      En <span className="font-medium">Calculadora</span> responde según el árbol de decisión (edad/peso/unidades).
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium">3.</span>
+                      En <span className="font-medium">Estrategia</span> ingresa tus parámetros para recomendaciones operativas.
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium">4.</span>
+                      Usa “Descargar Informe” para guardar el resumen (HTML/Markdown).
+                    </li>
+                  </ol>
+
+                  <div className="mt-5 flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={dontShowAgain}
+                        onChange={(e) => setDontShowAgain(e.target.checked)}
+                      />
+                      No volver a mostrar
+                    </label>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setShowOnboarding(false)}>
+                        Ver rápido
+                      </Button>
+                      <Button onClick={closeOnboarding}>
+                        Entrar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
     </div>
   )
 }
